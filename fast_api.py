@@ -1,9 +1,11 @@
+import time
 import os
 
 from groq import Groq
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from fastapi.responses import StreamingResponse
 
 load_dotenv()
 
@@ -15,7 +17,7 @@ app = FastAPI()
 class PromptRequest(BaseModel):
     prompt: str
 
-@app.post("/generate/")
+@app.post("/stream/")
 async def generate_response(request: PromptRequest):
     try:
         client = Groq(api_key=groq_api_key)
@@ -33,13 +35,20 @@ async def generate_response(request: PromptRequest):
             }
         ],
         temperature=1,
-        max_tokens=1024*4,
+        max_tokens=1024*1,
         top_p=1,
-        stream=False,  
+        stream=True,  # Enable streaming
         stop=None,
         )
 
-        return {"response": completion.choices[0].message.content.strip()}
+        def response_stream():
+            for chunk in completion:
+                time.sleep(0.1)
+                content = chunk.choices[0].delta.content
+                if content is not None:
+                    yield content
+
+        return StreamingResponse(response_stream(), media_type="text/plain")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

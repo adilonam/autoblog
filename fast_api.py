@@ -15,16 +15,13 @@ groq_api_key = os.getenv('GROQ_API_KEY')
 app = FastAPI()
 
 
-
 class PromptRequest(BaseModel):
     prompt: List[dict]
 
-@app.post("/stream/")
-async def generate_response(request: PromptRequest):
-    
+def preprocess_data(data: List[dict]) -> List[dict]:
     _data =[]
 
-    for j in  request.prompt:
+    for j in  data:
         element = {}
         element['role'] = j['role']
         element['content'] = ""
@@ -38,13 +35,22 @@ async def generate_response(request: PromptRequest):
 
         if  element['content']:
             _data.append(element)
-    print("Received data ::: " , _data)
+    return _data
+
+
+
+@app.post("/stream/")
+async def generate_response(request: PromptRequest):
+    
+    messages = preprocess_data( request.prompt)
+
+    print("Received data ::: " , messages)
     try:
         client = Groq(api_key=groq_api_key)
 
         completion = client.chat.completions.create(
         model="llama3-70b-8192",
-        messages=_data,
+        messages=messages,
         temperature=1,
         max_tokens=1024*1,
         top_p=1,
@@ -56,7 +62,7 @@ async def generate_response(request: PromptRequest):
             for chunk in completion:
                 content = chunk.choices[0].delta.content
                 if content:
-                    yield content + "\n"
+                    yield content 
                 # await asyncio.sleep(5) 
 
         return StreamingResponse(response_stream(), media_type="text/event-stream")

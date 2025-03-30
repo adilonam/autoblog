@@ -47,10 +47,12 @@ model_judge_prompt = """
 """
 
 
+
+
 @app.post("/stream/")
 async def generate_response(request: PromptRequest):
+    print("Received request ::: ", request.prompt)
     messages = preprocess_data(request.prompt)
-    print("Received data ::: ", messages)
     model1 = "gemma2-9b-it"
     model2 = "llama3-8b-8192"
     model3 = "deepseek-r1-distill-llama-70b"

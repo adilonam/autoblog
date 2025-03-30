@@ -97,7 +97,7 @@ async def generate_response(request: PromptRequest, email: str = None):
         judging_completion = client.chat.completions.create(
             model=model_judge,
             messages=model_judge_messages,
-            temperature=1,
+            temperature=0.2,
             max_tokens=1024,
             top_p=1,
             stream=False,
@@ -112,7 +112,7 @@ async def generate_response(request: PromptRequest, email: str = None):
         print(f"## Model Judge {model_judge} response:", judge_response)
 
         try:
-            result_value = re.search(r"<result>(.*?)</result>", judge_response).group(1)
+            result_value = re.search(r"<result>(.*?)</result>", judge_response, re.DOTALL).group(1)
             decision_value = re.search(r"<decision>(.*?)</decision>", judge_response).group(1)
             for i, response in enumerate(responses, start=1):
                 weight = re.search(rf"<response{i}>(.*?)</response{i}>", judge_response).group(1)

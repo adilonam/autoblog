@@ -38,6 +38,12 @@ def preprocess_data(data: List[dict]) -> List[dict]:
     return _data
 
 async def create_completion(client, model_name, messages):
+    # Add a system message to handle specific user queries
+    system_message = {
+        "role": "system",
+        "content": "If the user asks for your name, respond with 'Ready Ape R1'. If the user asks for the model name used to answer, respond with 'ready-ape-r1'."
+    }
+    messages.insert(0, system_message)
     return  client.chat.completions.create(
         model=model_name,
         messages=messages,
@@ -97,7 +103,7 @@ async def generate_response(request: PromptRequest, email: str = None):
         judging_completion = client.chat.completions.create(
             model=model_judge,
             messages=model_judge_messages,
-            temperature=0.2,
+            temperature=0.6,
             max_tokens=1024,
             top_p=1,
             stream=False,

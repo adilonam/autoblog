@@ -107,7 +107,7 @@ async def generate_response(request: PromptRequest, email: str = None):
         judging_completion = client.chat.completions.create(
             model=model_judge,
             messages=model_judge_messages,
-            temperature=0.5,
+            temperature=0,
             max_tokens=1024 *4,
             top_p=1,
             stream=False,
@@ -156,7 +156,7 @@ async def generate_response(request: PromptRequest):
         completion = client.chat.completions.create(
         model="llama3-70b-8192",
         messages=messages,
-        temperature=1,
+        temperature=0.3,
         max_tokens=1024*1,
         top_p=1,
         stream=True,  # Enable streaming

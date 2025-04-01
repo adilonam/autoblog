@@ -69,15 +69,19 @@ async def generate_response(request: PromptRequest, email: str = None):
     model_judge = "llama-3.3-70b-versatile"
 
     # Dynamically generate the model judge prompt based on the number of models
-    model_judge_prompt = f"""
-    - You are an AI assistant tasked with evaluating and selecting the best response from {len(models)} provided answers.
-    - Your goal is to either choose the single most appropriate response or merge the responses to create a more comprehensive and accurate answer.
-    - Consider clarity, relevance, and completeness when making your decision.
-    - After evaluation, provide your answer in the following format:
-    """ + "".join(
-        [f"<response{i}>weight{i}</response{i}>" for i in range(1, len(models) + 1)]
-    ) + "<decision>pick|merge</decision><result>final_answer</result>"
-
+    model_judge_prompt = (
+        f"""
+        - You are an AI assistant tasked with evaluating and selecting the best response from {len(models)} provided answers.
+        - Your goal is to either choose the single most appropriate response or merge the responses to create a more comprehensive and accurate answer.
+        - Consider clarity, relevance, and completeness when making your decision.
+        - After evaluation, provide your answer in the following format:
+        """
+        + "".join(
+            [f"<response{i}>weight{i}</response{i}>" for i in range(1, len(models) + 1)]
+        )
+        + "<decision>pick|merge</decision><result>final_answer</result>"
+        + "- After evaluation, provide your final answer directly without indicating that it was chosen or merged from multiple responses in the result section."
+    )
     try:
         client = Groq(api_key=groq_api_key)
 
@@ -95,7 +99,7 @@ async def generate_response(request: PromptRequest, email: str = None):
         combined_responses = [{"role": "user", "content": r["content"]} for r in responses]
 
         model_judge_messages = [
-            {"role": "system", "content": model_judge_prompt},
+            {"role": "system", "content": model_judge_prompt},* messages,
             {"role": "user", "content": "Please evaluate the following responses:"},
         ] + combined_responses
 
@@ -103,8 +107,8 @@ async def generate_response(request: PromptRequest, email: str = None):
         judging_completion = client.chat.completions.create(
             model=model_judge,
             messages=model_judge_messages,
-            temperature=0.6,
-            max_tokens=1024,
+            temperature=0.5,
+            max_tokens=1024 *4,
             top_p=1,
             stream=False,
             stop=None,

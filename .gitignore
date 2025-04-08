@@ -105,3 +105,6 @@ dmypy.json
 cython_debug/
 
 output/
+
+
+ignore.py

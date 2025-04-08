@@ -4,6 +4,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
 from google_images_search import GoogleImagesSearch
+from ignore import topics 
 
 class BlogGenerator:
     def __init__(self, website="1"):
@@ -200,5 +201,6 @@ class BlogGenerator:
 
 # Example usage:
 if __name__ == "__main__":
-    generator = BlogGenerator(website="1")
-    blog_path = generator.generate("The Moroccan Amazigh Tattoos: Ancient Body Art")
+    for topic in topics:
+        generator = BlogGenerator(website="1")
+        blog_path = generator.generate(topic)

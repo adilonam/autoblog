@@ -74,13 +74,8 @@ async def generate_response(request: PromptRequest, email: str = None):
         - You are an AI assistant tasked with evaluating and selecting the best response from {len(models)} provided answers.
         - Your goal is to either choose the single most appropriate response or merge the responses to create a more comprehensive and accurate answer.
         - Consider clarity, relevance, and completeness when making your decision.
-        - After evaluation, provide your answer in the following format:
+        - After evaluation, provide your final answer directly without indicating that it was chosen or merged from multiple responses in the result section.
         """
-        + "".join(
-            [f"<response{i}>weight{i}</response{i}>" for i in range(1, len(models) + 1)]
-        )
-        + "<decision>pick|merge</decision><result>final_answer</result>"
-        + "- After evaluation, provide your final answer directly without indicating that it was chosen or merged from multiple responses in the result section."
     )
     try:
         client = Groq(api_key=groq_api_key)
@@ -99,7 +94,7 @@ async def generate_response(request: PromptRequest, email: str = None):
         combined_responses = [{"role": "user", "content": r["content"]} for r in responses]
 
         model_judge_messages = [
-            {"role": "system", "content": model_judge_prompt},* messages,
+           * messages, {"role": "system", "content": model_judge_prompt},
             {"role": "user", "content": "Please evaluate the following responses:"},
         ] + combined_responses
 
@@ -121,20 +116,9 @@ async def generate_response(request: PromptRequest, email: str = None):
             print(f"## {response['alias']} response:", response["content"])
         print(f"## Model Judge {model_judge} response:", judge_response)
 
-        try:
-            result_value = re.search(r"<result>(.*?)</result>", judge_response, re.DOTALL).group(1)
-            decision_value = re.search(r"<decision>(.*?)</decision>", judge_response).group(1)
-            for i, response in enumerate(responses, start=1):
-                weight = re.search(rf"<response{i}>(.*?)</response{i}>", judge_response).group(1)
-                print(f"## {response['alias']} weight:", weight)
-        except AttributeError:
-            raise HTTPException(status_code=500, detail="Required tag not found in the judge response")
-
-        print(f"## Judge {model_judge} decision:", decision_value)
-        print("## Result:", result_value)
-
+       
         async def response_stream():
-            for word in result_value.split():
+            for word in judge_response.split():
                 yield word + " "
             await asyncio.sleep(0.2)  # Simulate delay for streaming
 

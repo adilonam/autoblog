@@ -108,3 +108,6 @@ output/
 
 
 ignore.py
+
+
+.vscode/

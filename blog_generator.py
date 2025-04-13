@@ -4,7 +4,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
 from google_images_search import GoogleImagesSearch
-from ignore import topics 
+from ignore import website, topics 
 
 class BlogGenerator:
     def __init__(self, website="1"):
@@ -20,7 +20,7 @@ class BlogGenerator:
         
     def setup_paths(self):
         """Set up the file paths based on website configuration"""
-        if self.website == '1':
+        if self.website == 1:
             self.file_path = './format/moroccoheritage.mdx'
             self.blog_path = "/home/adil/repo/morocco-heritage/data/blog/"
             self.image_path = "/home/adil/repo/morocco-heritage/public/static/images"
@@ -202,5 +202,5 @@ class BlogGenerator:
 # Example usage:
 if __name__ == "__main__":
     for topic in topics:
-        generator = BlogGenerator(website="1")
+        generator = BlogGenerator(website=website)
         blog_path = generator.generate(topic)

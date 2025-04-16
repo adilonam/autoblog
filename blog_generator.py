@@ -4,6 +4,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
 from google_images_search import GoogleImagesSearch
+from utils import anycode_prompt, moroccoheritage_prompt, user_prompt
 from ignore import website, topics 
 
 class BlogGenerator:
@@ -16,18 +17,19 @@ class BlogGenerator:
         self.website = website
         self.setup_paths()
         self.load_environment()
-        self.load_mdx_format()
-        
+
     def setup_paths(self):
         """Set up the file paths based on website configuration"""
         if self.website == 1:
-            self.file_path = './format/moroccoheritage.mdx'
+            self.system_prompt = moroccoheritage_prompt
             self.blog_path = "/home/adil/repo/morocco-heritage/data/blog/"
             self.image_path = "/home/adil/repo/morocco-heritage/public/static/images"
-        else:
-            self.file_path = './format/gobitcode.mdx'
+        elif self.website == 2:
+            self.system_prompt = anycode_prompt
             self.blog_path = "/home/adil/repo/gobitcode/data/blog/"
             self.image_path = "/home/adil/repo/gobitcode/public/static/images"
+        else:
+            raise ValueError("Invalid website configuration")
 
     def load_environment(self):
         """Load environment variables and API keys"""
@@ -36,11 +38,7 @@ class BlogGenerator:
         self.google_api_key = os.getenv('GOOGLE_API_KEY')
         self.google_cx = os.getenv('GOOGLE_CX')
 
-    def load_mdx_format(self):
-        """Load and prepare the MDX format template"""
-        with open(self.file_path, 'r') as file:
-            self.mdx_format = file.read()
-        self.mdx_format = self.mdx_format.replace("current_date", datetime.now().strftime('%Y-%m-%d'))
+
 
     @staticmethod
     def generate_slug(title):
@@ -94,11 +92,11 @@ class BlogGenerator:
             messages=[
                 {
                     "role": "system",
-                    "content": f"You are a blog writer who writes blogs in this format: \n {self.mdx_format} \n Do not include any introductory text."
+                    "content": self.system_prompt
                 },
                 {
                     "role": "user",
-                    "content": f"Write a long-form blog about '{seo_keywords}' \n Do not forget image links and alt text."
+                    "content": user_prompt(seo_keywords)
                 }
             ],
             temperature=1,
@@ -140,6 +138,12 @@ class BlogGenerator:
         """Remove colon from the title line"""
         title_regex = r'^(title:.*?):(.*)$'
         return re.sub(title_regex, r'\1\2', mdx_blog, flags=re.MULTILINE)
+
+    def correct_date(self, mdx_blog):
+        """Update the date to today's date in the correct format"""
+        today = datetime.now().strftime('%Y-%m-%d')
+        date_regex = r'^(date:)\s*["\']?(\d{4}-\d{2}-\d{2})["\']?$'
+        return re.sub(date_regex, rf"\1 '{today}'", mdx_blog, count=1, flags=re.MULTILINE)
 
     def save_blog(self, mdx_blog, slug):
         """Save the blog content to an MDX file"""
@@ -186,12 +190,17 @@ class BlogGenerator:
         print("✓ Images processed and downloaded successfully")
         
         # Correct title format
-        print("\n4. Formatting blog content...")
+        print("\n4. Correcting blog title...")
         mdx_blog = self.correct_title(mdx_blog)
-        print("✓ Blog content formatted")
+        print("✓ Blog title corrected")
+        
+        # Correct date format
+        print("\n5. Updating date...")
+        mdx_blog = self.correct_date(mdx_blog)
+        print("✓ Date updated to today's date")
         
         # Save the blog
-        print("\n5. Saving blog file...")
+        print("\n6. Saving blog file...")
         filename = self.save_blog(mdx_blog, slug)
         blog_path = os.path.join(self.blog_path, filename)
         print(f"✓ Blog saved successfully at: {blog_path}")

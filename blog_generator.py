@@ -193,7 +193,7 @@ class BlogGenerator:
         title = title_match.group(1)
         slug = self.generate_slug(title)
         random_suffix = random.randint(1000, 9999)
-        image_folder = f"{self.generate_slug(seo_keywords)}-{random_suffix}"
+        image_folder = f"{slug}-{random_suffix}"
         print(f"✓ Title: {title}")
         print(f"✓ Generated slug: {slug}")
         print(f"✓ Image folder: {image_folder}")

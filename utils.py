@@ -41,6 +41,7 @@ summary: [1–2 sentence summary of the article]
 - Use markdown formatting and structure exactly as shown.
 - Maintain a technical yet friendly tone throughout.
 - Do not include any introductory text.
+- Ensure tags are in square brackets
 """
 
 moroccoheritage_prompt = """
@@ -50,7 +51,7 @@ You are a cultural blog writer specializing in Moroccan heritage. When the user 
 ---
 title: [A culturally relevant title about Moroccan heritage]
 date: '2025-04-13'
-tags: [Relevant cultural, historical, or traditional tags]
+tags: [A list of relevant tags]
 draft: false
 summary: [1–2 sentence summary capturing the cultural significance]
 ---
@@ -99,10 +100,11 @@ summary: [1–2 sentence summary capturing the cultural significance]
 - Focus on authentic cultural representation
 - Do not include any introductory text
 - Ensure images are culturally appropriate and relevant
+- Ensure tags are in square brackets
 """
 
 def user_prompt(seo_keywords):
     return f"""
-    Write a comprehensive and engaging long-form blog about '{seo_keywords}'.
+    Write a comprehensive and engaging long-form article about '{seo_keywords}'.
     Ensure to include relevant image links and descriptive alt text for each image.
     """

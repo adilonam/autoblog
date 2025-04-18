@@ -1,5 +1,6 @@
 import os
 import re
+import random
 from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
@@ -100,7 +101,8 @@ class BlogGenerator:
                 }
             ],
             temperature=1,
-            max_tokens=1024*4,
+            max_tokens=1024*8,
+            max_completion_tokens=1024*8,
             top_p=1,
             stream=False,
             stop=None,
@@ -108,12 +110,12 @@ class BlogGenerator:
 
         return completion.choices[0].message.content
 
-    def process_images(self, mdx_blog, parent_folder):
+    def process_images(self, mdx_blog, image_folder):
         """
         Process and download images for the blog
         Args:
             mdx_blog (str): Blog content with image tags
-            parent_folder (str): Folder to save images
+            image_folder (str): Folder to save images
         Returns:
             str: Updated blog content with new image paths
         """
@@ -123,9 +125,9 @@ class BlogGenerator:
         for match in matches:
             image_name = self.download_images(
                 f"{self.seo_keywords} {match}",
-                os.path.join(self.image_path, parent_folder)
+                os.path.join(self.image_path, image_folder)
             )
-            new_src = f'/static/images/{parent_folder}/{image_name}'
+            new_src = f'/static/images/{image_folder}/{image_name}'
             mdx_blog = re.sub(
                 rf'(<img[^>]*src=\")[^\"]*(\"[^>]*alt=\"{re.escape(match)}\"[^>]*>)',
                 rf'\1{new_src}\2',
@@ -135,9 +137,20 @@ class BlogGenerator:
         return mdx_blog
 
     def correct_title(self, mdx_blog):
-        """Remove colon from the title line"""
-        title_regex = r'^(title:.*?):(.*)$'
-        return re.sub(title_regex, r'\1\2', mdx_blog, flags=re.MULTILINE)
+        """Remove ':', "'", and '"' when they appear after 'title:' or 'summary:'"""
+        lines = mdx_blog.splitlines()
+        new_lines = []
+        for line in lines:
+            if line.startswith("title:"):
+                prefix, rest = line[:6], line[6:]
+                rest = rest.replace(":", " ").replace("'", " ").replace('"', " ")
+                line = prefix + rest
+            elif line.startswith("summary:"):
+                prefix, rest = line[:8], line[8:]
+                rest = rest.replace(":", " ").replace("'", " ").replace('"', " ")
+                line = prefix + rest
+            new_lines.append(line)
+        return "\n".join(new_lines)
 
     def correct_date(self, mdx_blog):
         """Update the date to today's date in the correct format"""
@@ -179,25 +192,26 @@ class BlogGenerator:
             
         title = title_match.group(1)
         slug = self.generate_slug(title)
-        parent_folder = self.generate_slug(seo_keywords)
+        random_suffix = random.randint(1000, 9999)
+        image_folder = f"{self.generate_slug(seo_keywords)}-{random_suffix}"
         print(f"✓ Title: {title}")
         print(f"✓ Generated slug: {slug}")
-        print(f"✓ Parent folder: {parent_folder}")
-        
-        # Process images
-        print("\n3. Processing and downloading images...")
-        mdx_blog = self.process_images(mdx_blog, parent_folder)
-        print("✓ Images processed and downloaded successfully")
+        print(f"✓ Image folder: {image_folder}")
         
         # Correct title format
-        print("\n4. Correcting blog title...")
+        print("\n3. Correcting blog title...")
         mdx_blog = self.correct_title(mdx_blog)
         print("✓ Blog title corrected")
         
         # Correct date format
-        print("\n5. Updating date...")
+        print("\n4. Updating date...")
         mdx_blog = self.correct_date(mdx_blog)
         print("✓ Date updated to today's date")
+        
+        # Process images
+        print("\n5. Processing and downloading images...")
+        mdx_blog = self.process_images(mdx_blog, image_folder)
+        print("✓ Images processed and downloaded successfully")
         
         # Save the blog
         print("\n6. Saving blog file...")

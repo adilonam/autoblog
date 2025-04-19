@@ -219,6 +219,12 @@ class BlogGenerator:
         blog_path = os.path.join(self.blog_path, filename)
         print(f"✓ Blog saved successfully at: {blog_path}")
         
+        # Open the blog in Chrome
+        print("\n7. Opening blog in Google Chrome...")
+        blog_url = f"http://localhost:3000/blog/{slug}"
+        os.system(f'google-chrome --new-tab "{blog_url}" &>/dev/null &')
+        print(f"✓ Opening blog at: {blog_url}")
+        
         print("\nBlog generation completed successfully!")
         return blog_path
 

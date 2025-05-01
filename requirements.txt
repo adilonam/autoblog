@@ -4,3 +4,4 @@ python-dotenv
 groq
 pydantic
 google-images-search
+pinterest-python-sdk

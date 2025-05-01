@@ -121,6 +121,7 @@ class BlogGenerator:
         """
         img_tag_regex = r'<img[^>]*alt=\"([^\"]*)\"[^>]*>'
         matches = re.findall(img_tag_regex, mdx_blog)
+        urls = []
         
         for match in matches:
             image_name = self.download_images(
@@ -128,13 +129,14 @@ class BlogGenerator:
                 os.path.join(self.image_path, image_folder)
             )
             new_src = f'/static/images/{image_folder}/{image_name}'
+            urls.append(new_src)
             mdx_blog = re.sub(
                 rf'(<img[^>]*src=\")[^\"]*(\"[^>]*alt=\"{re.escape(match)}\"[^>]*>)',
                 rf'\1{new_src}\2',
                 mdx_blog
             )
         
-        return mdx_blog
+        return mdx_blog, urls
 
     def correct_title(self, mdx_blog):
         """Remove ':', "'", and '"' when they appear after 'title:' or 'summary:'"""
@@ -210,7 +212,7 @@ class BlogGenerator:
         
         # Process images
         print("\n5. Processing and downloading images...")
-        mdx_blog = self.process_images(mdx_blog, image_folder)
+        mdx_blog, urls = self.process_images(mdx_blog, image_folder)
         print("✓ Images processed and downloaded successfully")
         
         # Save the blog

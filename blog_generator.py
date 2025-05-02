@@ -107,7 +107,7 @@ class BlogGenerator:
                     "content": user_prompt(seo_keywords)
                 }
             ],
-            temperature=1,
+            temperature=0.7,
             max_tokens=1024*8,
             max_completion_tokens=1024*8,
             top_p=1,

@@ -30,11 +30,13 @@ class BlogGenerator:
             self.blog_path = "/home/adil/repo/morocco-heritage/data/blog/"
             self.image_path = "/home/adil/repo/morocco-heritage/public/static/images"
             self.url = "https://moroccoheritage.com"
+            self.pinterest_board_id = None
         elif self.website == 2:
             self.system_prompt = anycode_prompt
             self.blog_path = "/home/adil/repo/gobitcode/data/blog/"
             self.image_path = "/home/adil/repo/gobitcode/public/static/images"
             self.url = "https://anycode.com"
+            self.pinterest_board_id = "1136244249676952980"
         else:
             raise ValueError("Invalid website configuration")
 
@@ -44,7 +46,7 @@ class BlogGenerator:
         self.groq_api_key = os.getenv('GROQ_API_KEY')
         self.google_api_key = os.getenv('GOOGLE_API_KEY')
         self.google_cx = os.getenv('GOOGLE_CX')
-        self.pinterest_board_id = os.getenv('PINTEREST_BOARD_ID')
+        
 
     @staticmethod
     def generate_slug(title):

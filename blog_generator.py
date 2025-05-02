@@ -5,6 +5,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
 from google_images_search import GoogleImagesSearch
+from pinterest.client import PinterestSDKClient
+from pinterest.organic.pins import Pin
+import base64
+import requests
 from utils import anycode_prompt, moroccoheritage_prompt, user_prompt
 from ignore import website, topics 
 
@@ -25,10 +29,12 @@ class BlogGenerator:
             self.system_prompt = moroccoheritage_prompt
             self.blog_path = "/home/adil/repo/morocco-heritage/data/blog/"
             self.image_path = "/home/adil/repo/morocco-heritage/public/static/images"
+            self.url = "https://moroccoheritage.com"
         elif self.website == 2:
             self.system_prompt = anycode_prompt
             self.blog_path = "/home/adil/repo/gobitcode/data/blog/"
             self.image_path = "/home/adil/repo/gobitcode/public/static/images"
+            self.url = "https://anycode.com"
         else:
             raise ValueError("Invalid website configuration")
 
@@ -38,8 +44,7 @@ class BlogGenerator:
         self.groq_api_key = os.getenv('GROQ_API_KEY')
         self.google_api_key = os.getenv('GOOGLE_API_KEY')
         self.google_cx = os.getenv('GOOGLE_CX')
-
-
+        self.pinterest_board_id = os.getenv('PINTEREST_BOARD_ID')
 
     @staticmethod
     def generate_slug(title):
@@ -121,7 +126,7 @@ class BlogGenerator:
         """
         img_tag_regex = r'<img[^>]*alt=\"([^\"]*)\"[^>]*>'
         matches = re.findall(img_tag_regex, mdx_blog)
-        urls = []
+        paths = []
         
         for match in matches:
             image_name = self.download_images(
@@ -129,14 +134,14 @@ class BlogGenerator:
                 os.path.join(self.image_path, image_folder)
             )
             new_src = f'/static/images/{image_folder}/{image_name}'
-            urls.append(new_src)
+            paths.append(os.path.join(self.image_path, image_folder, image_name))
             mdx_blog = re.sub(
                 rf'(<img[^>]*src=\")[^\"]*(\"[^>]*alt=\"{re.escape(match)}\"[^>]*>)',
                 rf'\1{new_src}\2',
                 mdx_blog
             )
         
-        return mdx_blog, urls
+        return mdx_blog, paths
 
     def correct_title(self, mdx_blog):
         """Remove ':', "'", and '"' when they appear after 'title:' or 'summary:'"""
@@ -169,6 +174,75 @@ class BlogGenerator:
             file.write(mdx_blog)
         
         return filename
+
+    def create_pinterest_pin(self, image_path, title, description,link, board_id):
+        """
+        Create a pin on Pinterest board using a local image file
+        
+        Args:
+            image_path (str): Local path to the image file
+            title (str): Title of the pin
+            description (str): Description of the pin
+            board_id (str): ID of the Pinterest board to pin to
+            
+        Returns:
+            tuple: Pin ID and Pin Title if successful, (None, None) if failed
+        """
+        try:
+            # Get client credentials
+            client_id = os.getenv('PINTEREST_CLIENT_ID')
+            client_secret = os.getenv('PINTEREST_CLIENT_SECRET')
+
+            # Encode credentials for Basic Authentication
+            credentials = f"{client_id}:{client_secret}"
+            encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+            # Set up headers and data for token request
+            headers = {
+                'Authorization': f'Basic {encoded_credentials}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            
+            data = {
+                'grant_type': 'client_credentials',
+                'scope': 'pins:read,pins:write,boards:read,boards:write'
+            }
+
+            # Get access token
+            response = requests.post('https://api.pinterest.com/v5/oauth/token', headers=headers, data=data)
+            
+            if response.status_code != 200:
+                print(f"Failed to generate token. Status code: {response.status_code}")
+                return None, None
+
+            token_data = response.json()
+            access_token = token_data['access_token']
+
+            # Initialize Pinterest SDK Client
+            PinterestSDKClient(access_token=access_token)
+
+            # Read and encode image
+            with open(image_path, "rb") as img_file:
+                encoded_string = base64.b64encode(img_file.read()).decode()
+
+            # Create pin
+            pin_create = Pin.create(
+                board_id=board_id,
+                title=title,
+                link=link,
+                description=description,
+                media_source={
+                    "source_type": "image_base64",
+                    "content_type": "image/jpeg",  # adjust to image/png if needed
+                    "data": encoded_string
+                }
+            )
+            
+            return pin_create.id, pin_create.title
+
+        except Exception as e:
+            print(f"Error creating pin: {str(e)}")
+            return None, None
 
     def generate(self, seo_keywords):
         """
@@ -212,7 +286,7 @@ class BlogGenerator:
         
         # Process images
         print("\n5. Processing and downloading images...")
-        mdx_blog, urls = self.process_images(mdx_blog, image_folder)
+        mdx_blog, paths = self.process_images(mdx_blog, image_folder)
         print("✓ Images processed and downloaded successfully")
         
         # Save the blog
@@ -226,6 +300,29 @@ class BlogGenerator:
         blog_url = f"http://localhost:3000/blog/{slug}"
         os.system(f'google-chrome --new-tab "{blog_url}" &>/dev/null &')
         print(f"✓ Opening blog at: {blog_url}")
+        
+        # Create Pinterest pin
+        print("\n8. Creating Pinterest pin...")
+        if paths and self.pinterest_board_id and self.url:
+            title_match = re.search(r'^title:\s*(.*)$', mdx_blog, re.MULTILINE)
+            summary_match = re.search(r'^summary:\s*(.*)$', mdx_blog, re.MULTILINE)
+            
+            if title_match and summary_match:
+                pin_title = title_match.group(1)
+                pin_description = summary_match.group(1)
+                pin_id, pin_title = self.create_pinterest_pin(
+                    paths[0],  # Use the first image
+                    pin_title,
+                    pin_description,
+                    self.url + f"/blog/{slug}",
+                    self.pinterest_board_id
+                )
+                if pin_id:
+                    print(f"✓ Pinterest pin created successfully with ID: {pin_id}")
+                else:
+                    print("✗ Failed to create Pinterest pin")
+        else:
+            print("✗ Skipping Pinterest pin creation - no images or board ID available")
         
         print("\nBlog generation completed successfully!")
         return blog_path

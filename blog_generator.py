@@ -11,6 +11,7 @@ import base64
 import requests
 from utils import anycode_prompt, moroccoheritage_prompt, user_prompt
 from ignore import website, topics 
+from openai import OpenAI
 
 class BlogGenerator:
     def __init__(self, website="1"):
@@ -35,7 +36,7 @@ class BlogGenerator:
             self.system_prompt = anycode_prompt
             self.blog_path = "/home/adil/repo/gobitcode/data/blog/"
             self.image_path = "/home/adil/repo/gobitcode/public/static/images"
-            self.url = "https://anycode.com"
+            self.url = "https://anycode.it"
             self.pinterest_board_id = "1136244249676952980"
         else:
             raise ValueError("Invalid website configuration")
@@ -46,6 +47,7 @@ class BlogGenerator:
         self.groq_api_key = os.getenv('GROQ_API_KEY')
         self.google_api_key = os.getenv('GOOGLE_API_KEY')
         self.google_cx = os.getenv('GOOGLE_CX')
+        self.openai_api_key = os.getenv('OPENAI_API_KEY')
         
 
     @staticmethod
@@ -85,37 +87,75 @@ class BlogGenerator:
         
         return new_image_name
 
-    def generate_blog(self, seo_keywords):
+    def generate_blog(self, seo_keywords, use_openai=True):
         """
-        Generate a blog post using Groq API
+        Generate a blog post using either Groq or OpenAI API
         Args:
             seo_keywords (str): Main topic/keywords for the blog
+            use_openai (bool): If True use OpenAI API, else use Groq API
         Returns:
             str: Generated blog content
         """
-        client = Groq(api_key=self.groq_api_key)
-        
-        completion = client.chat.completions.create(
-            model="llama3-70b-8192",
-            messages=[
+        if not use_openai:
+            client = Groq(api_key=self.groq_api_key)
+            completion = client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": self.system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": user_prompt(seo_keywords)
+                    }
+                ],
+                temperature=0.7,
+                max_tokens=1024*8,
+                max_completion_tokens=1024*8,
+                top_p=1,
+                stream=False,
+                stop=None,
+            )
+            return completion.choices[0].message.content
+        else:
+            
+            client = OpenAI(api_key=self.openai_api_key)
+            completion  = client.responses.create(
+            model="gpt-4.1",
+            input=[
                 {
-                    "role": "system",
-                    "content": self.system_prompt
+                "role": "system",
+                "content": [
+                    {
+                    "type": "input_text",
+                    "text": self.system_prompt
+                    }
+                ]
                 },
                 {
-                    "role": "user",
-                    "content": user_prompt(seo_keywords)
+                "role": "user",
+                "content": [
+                    {
+                    "type": "input_text",
+                    "text": user_prompt(seo_keywords)
+                    }
+                ]
                 }
             ],
-            temperature=0.7,
-            max_tokens=1024*8,
-            max_completion_tokens=1024*8,
+            text={
+                "format": {
+                "type": "text"
+                }
+            },
+            reasoning={},
+            tools=[],
+            temperature=1,
+            max_output_tokens=2**63 -1,
             top_p=1,
             stream=False,
-            stop=None,
-        )
-
-        return completion.choices[0].message.content
+            )
+            return completion.output_text
 
     def process_images(self, mdx_blog, image_folder):
         """
@@ -259,7 +299,7 @@ class BlogGenerator:
         
         # Generate blog content
         print("1. Generating blog content using Groq API...")
-        mdx_blog = self.generate_blog(seo_keywords)
+        mdx_blog = self.generate_blog(seo_keywords, use_openai=True)
         print("✓ Blog content generated successfully")
         
         # Generate slugs

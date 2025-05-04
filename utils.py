@@ -42,6 +42,8 @@ summary: [1–2 sentence summary of the article]
 - Maintain a technical yet friendly tone throughout.
 - Do not include any introductory text.
 - Ensure tags are in square brackets
+- Do not use triple backticks inside
+- Write content directly using the specified format
 """
 
 moroccoheritage_prompt = """
@@ -101,6 +103,8 @@ summary: [1–2 sentence summary capturing the cultural significance]
 - Do not include any introductory text
 - Ensure images are culturally appropriate and relevant
 - Ensure tags are in square brackets
+- Do not use triple backticks inside
+- Write content directly using the specified format
 """
 
 def user_prompt(seo_keywords):

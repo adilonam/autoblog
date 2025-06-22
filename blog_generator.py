@@ -298,8 +298,10 @@ class BlogGenerator:
         self.seo_keywords = seo_keywords
         
         # Generate blog content
-        print("1. Generating blog content using Groq API...")
-        mdx_blog = self.generate_blog(seo_keywords, use_openai=True)
+        use_openai = False
+        model_provider = "OpenAI" if use_openai else "Groq"
+        print(f"1. Generating blog content using {model_provider} API...")
+        mdx_blog = self.generate_blog(seo_keywords, use_openai=use_openai)
         print("✓ Blog content generated successfully")
         
         # Generate slugs

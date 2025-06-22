@@ -65,27 +65,37 @@ class BlogGenerator:
             path (str): Directory to save images
             limit (int): Number of images to download
         Returns:
-            str: New filename of the downloaded image
+            str or None: New filename of the downloaded image, None if no image found
         """
-        gis = GoogleImagesSearch(self.google_api_key, self.google_cx)
-        
-        search_params = {
-            'q': keyword,
-            'num': limit,
-            'safe': 'off',
-        }
+        try:
+            gis = GoogleImagesSearch(self.google_api_key, self.google_cx)
+            
+            search_params = {
+                'q': keyword,
+                'num': limit,
+                'safe': 'off',
+            }
 
-        gis.search(search_params=search_params)
-        image = gis.results()[0]
-        image.download(path)
-        
-        # Rename the downloaded image
-        old_image_name = os.path.basename(image.path)
-        filename, extension = os.path.splitext(old_image_name)
-        new_image_name = f"{self.generate_slug(filename)}{extension}"
-        os.rename(image.path, os.path.join(path, new_image_name))
-        
-        return new_image_name
+            gis.search(search_params=search_params)
+            results = gis.results()
+            
+            if not results:
+                print(f"Warning: No images found for keyword: {keyword}")
+                return None
+                
+            image = results[0]
+            image.download(path)
+            
+            # Rename the downloaded image
+            old_image_name = os.path.basename(image.path)
+            filename, extension = os.path.splitext(old_image_name)
+            new_image_name = f"{self.generate_slug(filename)}{extension}"
+            os.rename(image.path, os.path.join(path, new_image_name))
+            
+            return new_image_name
+        except Exception as e:
+            print(f"Error downloading image for keyword '{keyword}': {str(e)}")
+            return None
 
     def generate_blog(self, seo_keywords, use_openai=True):
         """
@@ -164,7 +174,7 @@ class BlogGenerator:
             mdx_blog (str): Blog content with image tags
             image_folder (str): Folder to save images
         Returns:
-            str: Updated blog content with new image paths
+            str: Updated blog content with new image paths or removed image tags
         """
         img_tag_regex = r'<img[^>]*alt=\"([^\"]*)\"[^>]*>'
         matches = re.findall(img_tag_regex, mdx_blog)
@@ -175,13 +185,24 @@ class BlogGenerator:
                 f"{self.seo_keywords} {match}",
                 os.path.join(self.image_path, image_folder)
             )
-            new_src = f'/static/images/{image_folder}/{image_name}'
-            paths.append(os.path.join(self.image_path, image_folder, image_name))
-            mdx_blog = re.sub(
-                rf'(<img[^>]*src=\")[^\"]*(\"[^>]*alt=\"{re.escape(match)}\"[^>]*>)',
-                rf'\1{new_src}\2',
-                mdx_blog
-            )
+            
+            if image_name:
+                # Successfully downloaded image, update the src attribute
+                new_src = f'/static/images/{image_folder}/{image_name}'
+                paths.append(os.path.join(self.image_path, image_folder, image_name))
+                mdx_blog = re.sub(
+                    rf'(<img[^>]*src=\")[^\"]*(\"[^>]*alt=\"{re.escape(match)}\"[^>]*>)',
+                    rf'\1{new_src}\2',
+                    mdx_blog
+                )
+            else:
+                # Failed to download image, remove the entire img tag
+                print(f"Removing image tag for alt text: {match}")
+                mdx_blog = re.sub(
+                    rf'<img[^>]*alt=\"{re.escape(match)}\"[^>]*>',
+                    '',
+                    mdx_blog
+                )
         
         return mdx_blog, paths
 
